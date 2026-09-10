@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Relay",
+  "version": "1.0.0",
+  "description": "Intelligent context transfer for AI workflows.",
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

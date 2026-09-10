@@ -1,0 +1,14 @@
+body{
+  width: 300px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+h1{
+  margin: 0;
+}
+button{
+  margin-top: 20px;
+  padding: 10px;
+  cursor: pointer;
+}
