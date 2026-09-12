@@ -64,7 +64,9 @@
     if (platform === "chatgpt") {
       messages = window.RelayContextChatGPT?.scrape() || [];
     }
-
+    if (platform === "gemini") {
+      messages = window.RelayContextGemini?.scrape() || [];
+    }
     // More platform scrapers will be connected here
     // as we implement Claude, Gemini, Copilot and Grok.
 
