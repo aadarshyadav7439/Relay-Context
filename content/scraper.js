@@ -73,11 +73,9 @@
     if (platform === "copilot") {
       messages = window.RelayContextCopilot?.scrape() || [];
     }
-    // More platform scrapers will be connected here
-    // as we implement Claude, Gemini, Copilot and Grok.
-
-    // If the platform scraper returned nothing,
-    // try the generic fallback.
+    if (platform === "grok") {
+      messages = window.RelayContextGrok?.scrape() || [];
+    }
     if (messages.length === 0) {
       messages = fallbackScraper();
     }
