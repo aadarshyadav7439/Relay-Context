@@ -61,11 +61,17 @@
 
     let messages = [];
 
-    if (platform === "chatgpt") {
+    if(platform === "chatgpt"){
       messages = window.RelayContextChatGPT?.scrape() || [];
     }
-    if (platform === "gemini") {
+    if(platform === "gemini"){
       messages = window.RelayContextGemini?.scrape() || [];
+    }
+    if(platform === "claude"){
+      messages = window.RelayContextClaude?.scrape() || [];
+    }
+    if (platform === "copilot") {
+      messages = window.RelayContextCopilot?.scrape() || [];
     }
     // More platform scrapers will be connected here
     // as we implement Claude, Gemini, Copilot and Grok.
