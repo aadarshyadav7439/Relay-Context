@@ -10,10 +10,19 @@
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts":[
+  "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/scraper.js"]
+      "js": [
+        "content/context-engine.js",
+        "content/platforms/platform-detector.js",
+        "content/platforms/chatgpt.js",
+        "content/platforms/claude.js",
+        "content/platforms/gemini.js",
+        "content/platforms/copilot.js",
+        "content/platforms/grok.js",
+        "content/scraper.js"
+      ]
     }
   ]
 }
