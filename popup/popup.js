@@ -1,5 +1,4 @@
 const captureBtn = document.getElementById("captureBtn");
-
 const pageTitle = document.getElementById("pageTitle");
 const pageUrl = document.getElementById("pageUrl");
 const pageText = document.getElementById("pageText");
@@ -18,14 +17,14 @@ captureBtn.addEventListener("click", async () => {
     }
 
     const context = response.data;
+    const processedContext = window.RelayContextEngine.processContext(context, "compact");
     //extracted data ko localStorage me save as capturedContext
     await chrome.storage.local.set({
-      capturedContext: context
+      capturedContext: processedContext
     });
-
-    pageTitle.textContent = context.title;
-    pageUrl.textContent = context.url;
-    pageText.textContent = context.text;
+    pageTitle.textContent = processedContext.title;
+    pageUrl.textContent = processedContext.url;
+    pageText.textContent = processedContext.text;
   });
 });
 
