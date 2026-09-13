@@ -295,14 +295,10 @@ function processContext(context, mode = "compact") {
     platform: context.platform,
     title: context.title,
     url: context.url,
-
     mode,
-
     messages,
     processedMessages: condensed,
-
     text: buildContextPrompt(messages, mode),
-
     statistics: {
       originalTurns: messages.length,
       processedTurns: condensed.length,
