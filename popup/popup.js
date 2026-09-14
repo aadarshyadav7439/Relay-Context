@@ -4,6 +4,13 @@ const exportBtn = document.getElementById("exportBtn");
 const pageTitle = document.getElementById("pageTitle");
 const pageUrl = document.getElementById("pageUrl");
 const pageText = document.getElementById("pageText");
+const targetBtns = document.querySelectorAll(".target-btn");
+
+function enableActionButtons() {
+  copyBtn.disabled = false;
+  exportBtn.disabled = false;
+  targetBtns.forEach((btn) => (btn.disabled = false));
+}
 
 captureBtn.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({active: true,currentWindow: true,});
@@ -31,8 +38,7 @@ captureBtn.addEventListener("click", async () => {
     pageText.textContent = context.text;
 
     //buttons enable once context is available
-    copyBtn.disabled = false;
-    exportBtn.disabled = false;
+    enableActionButtons();
   });
 });
 
@@ -70,8 +76,23 @@ async function loadSavedContext() {
   pageText.textContent = context.text;
 
   //enable buttons when the content is available
-  copyBtn.disabled = false;
-  exportBtn.disabled = false;
+  enableActionButtons();
 }
+//redirect platforms
+targetBtns.forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const { capturedContext } = await chrome.storage.local.get("capturedContext");
+    if (!capturedContext) return;
+
+    // Stash what to inject + where, so injector.js (on the target site) can pick it up.
+    await chrome.storage.local.set({
+      pendingContext: capturedContext.text,
+      pendingTarget: btn.dataset.platform,
+    });
+
+    chrome.tabs.create({ url: btn.dataset.url });
+  });
+});
+
 //context ui me load karwa lenge
 loadSavedContext();
