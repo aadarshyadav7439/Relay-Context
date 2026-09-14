@@ -21,7 +21,8 @@
         "content/platforms/gemini.js",
         "content/platforms/copilot.js",
         "content/platforms/grok.js",
-        "content/scraper.js"
+        "content/scraper.js",
+        "content/injector.js"
       ]
     }
   ]
