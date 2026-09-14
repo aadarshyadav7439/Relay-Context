@@ -1,10 +1,31 @@
 const captureBtn = document.getElementById("captureBtn");
 const copyBtn = document.getElementById("copyBtn");
 const exportBtn = document.getElementById("exportBtn");
-const pageTitle = document.getElementById("pageTitle");
-const pageUrl = document.getElementById("pageUrl");
-const pageText = document.getElementById("pageText");
+const statusCard = document.getElementById("statusCard");
+const statusIcon = document.getElementById("statusIcon");
+const statusTitle = document.getElementById("statusTitle");
+const statusMeta = document.getElementById("statusMeta");
 const targetBtns = document.querySelectorAll(".target-btn");
+
+// Holds the captured text in memory for Copy — not rendered in the DOM,
+// since the user only needs to see status, not the raw content.
+let capturedText = "";
+
+function setStatus({ title, mode, messageCount, filled }) {
+  if (filled) {
+    statusCard.classList.remove("status-empty");
+    statusCard.classList.add("status-filled");
+    statusIcon.textContent = "✓";
+    statusTitle.textContent = title || "Context captured";
+    statusMeta.textContent = `${mode === "compact" ? "Compact" : "Full"} · ${messageCount ?? "?"} messages`;
+  } else {
+    statusCard.classList.remove("status-filled");
+    statusCard.classList.add("status-empty");
+    statusIcon.textContent = "○";
+    statusTitle.textContent = "No context captured yet";
+    statusMeta.textContent = "";
+  }
+}
 
 function enableActionButtons() {
   copyBtn.disabled = false;
@@ -12,38 +33,46 @@ function enableActionButtons() {
   targetBtns.forEach((btn) => (btn.disabled = false));
 }
 
-captureBtn.addEventListener("click", async () => {
-  const [tab] = await chrome.tabs.query({active: true,currentWindow: true,});
+function disableActionButtons() {
+  copyBtn.disabled = true;
+  exportBtn.disabled = true;
+  targetBtns.forEach((btn) => (btn.disabled = true));
+}
 
+captureBtn.addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const mode = document.querySelector('input[name="mode"]:checked').value;
-  //scraper ko cature karne ka message bhejenge taki response mil sake
+
   chrome.tabs.sendMessage(tab.id, { type: "CAPTURE_CONTEXT", mode }, async (response) => {
     if (chrome.runtime.lastError) {
       console.error(chrome.runtime.lastError.message);
       return;
     }
-    if(!response?.success){
-      console.error("RelayContext failed to capture Page.");
+    if (!response?.success) {
+      console.error("RelayContext failed to capture page:", response?.error);
+      setStatus({ filled: false });
+      disableActionButtons();
       return;
     }
 
     const context = response.data;
-    //extracted data ko localStorage me save as capturedContext
-    await chrome.storage.local.set({
-      capturedContext: context
+    capturedText = context.text;
+
+    await chrome.storage.local.set({ capturedContext: context });
+
+    setStatus({
+      title: context.title,
+      mode,
+      messageCount: context.messages?.length ?? context.processedMessages?.length,
+      filled: true,
     });
 
-    pageTitle.textContent = context.title;
-    pageUrl.textContent = context.url;
-    pageText.textContent = context.text;
-
-    //buttons enable once context is available
     enableActionButtons();
   });
 });
 
 copyBtn.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(pageText.textContent);
+  await navigator.clipboard.writeText(capturedText);
   copyBtn.textContent = "Copied!";
   setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
 });
@@ -61,38 +90,48 @@ exportBtn.addEventListener("click", async () => {
   URL.revokeObjectURL(url);
 });
 
-//loads the already capturedContentfrom local Storage if present
-async function loadSavedContext() {
-  const result = await chrome.storage.local.get("capturedContext");
-
-  if (!result.capturedContext) {
-    return;
-  }
-
-  const context = result.capturedContext;
-
-  pageTitle.textContent = context.title;
-  pageUrl.textContent = context.url;
-  pageText.textContent = context.text;
-
-  //enable buttons when the content is available
-  enableActionButtons();
-}
-//redirect platforms
 targetBtns.forEach((btn) => {
   btn.addEventListener("click", async () => {
     const { capturedContext } = await chrome.storage.local.get("capturedContext");
     if (!capturedContext) return;
 
-    // Stash what to inject + where, so injector.js (on the target site) can pick it up.
+    const autoSend = document.getElementById("autoSendToggle").checked;
+
     await chrome.storage.local.set({
       pendingContext: capturedContext.text,
       pendingTarget: btn.dataset.platform,
+      autoSend,
     });
 
     chrome.tabs.create({ url: btn.dataset.url });
   });
 });
 
-//context ui me load karwa lenge
+// Loads saved context, but only shows it if it actually belongs to the
+// current tab — otherwise you'd see stale status from a different page.
+async function loadSavedContext() {
+  const result = await chrome.storage.local.get("capturedContext");
+  if (!result.capturedContext) return;
+
+  const context = result.capturedContext;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (tab?.url !== context.url) {
+    setStatus({ filled: false });
+    disableActionButtons();
+    return;
+  }
+
+  capturedText = context.text;
+
+  setStatus({
+    title: context.title,
+    mode: context.mode,
+    messageCount: context.messages?.length ?? context.processedMessages?.length,
+    filled: true,
+  });
+
+  enableActionButtons();
+}
+
 loadSavedContext();
