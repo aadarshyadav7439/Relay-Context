@@ -219,21 +219,18 @@ function shouldCompress(messages) {
 function createStateFile(messages, mode = "compact") {
   const cleanedMessages = formatMessages(messages);
 
-  const transcript =
-    mode === "compact" ? compactTranscript(cleanedMessages) : cleanedMessages;
+  const transcript = mode === "compact" ? compactTranscript(cleanedMessages) : cleanedMessages;
 
   const stateFile = {
     version: "1.0",
     format: "RelayContext State File",
     exportedAt: new Date().toISOString(),
-
     statistics: {
       originalTurns: cleanedMessages.length,
       condensedTurns: transcript.length,
       compressionMode: mode,
       compressionRatio: getCompressionRatio(cleanedMessages, transcript),
     },
-
     transcript,
   };
 

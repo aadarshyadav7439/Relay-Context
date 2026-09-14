@@ -104,23 +104,16 @@
       // Process here (same content-script world as context-engine.js),
       // since popup.js can't reach window.RelayContextEngine itself.
       const mode = message.mode || "compact";
-      const processed = window.RelayContextEngine?.processContext(
-        context,
-        mode,
-      );
+      const processed = window.RelayContextEngine?.processContext(context,mode);
 
       if (!processed) {
-        sendResponse({
-          success: false,
-          error: "No messages found to process.",
-        });
+        sendResponse({success: false,error: "No messages found to process."});
         return;
       }
+      //generating the export ready json
+      processed.stateFile = window.RelayContextEngine.createStateFile(context.messages,mode);
 
-      sendResponse({
-        success: true,
-        data: processed,
-      });
+      sendResponse({success: true,data: processed});
     } catch (error) {
       console.error("RelayContext capture failed:", error);
 

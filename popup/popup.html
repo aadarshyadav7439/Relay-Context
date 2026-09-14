@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RelayContext</title>
     <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
     <h1>RelayContext</h1>
     <p>Your context, connected.</p>
-    <button id="captureBtn">Capture Context</button>
+    <div id="modeSelector">
+        <label><input type="radio" name="mode" value="compact" checked> Compact</label>
+        <label><input type="radio" name="mode" value="full"> Full</label>
+    </div>
 
+    <button id="captureBtn">Capture Context</button>
+    <button id="copyBtn" disabled>Copy</button>
+    <button id="exportBtn" disabled>Export State File</button>
     <div id="contextContainer">
         <h3>Captured Context</h3>
 
@@ -22,4 +30,5 @@
 
     <script src="popup.js"></script>
 </body>
+
 </html>
