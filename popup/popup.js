@@ -11,6 +11,27 @@ const targetBtns = document.querySelectorAll(".target-btn");
 // since the user only needs to see status, not the raw content.
 let capturedText = "";
 
+function showError(message) {
+  statusCard.classList.remove("status-filled");
+  statusCard.classList.add("status-empty");
+
+  statusIcon.textContent = "!";
+  statusTitle.textContent = "Something went wrong";
+  statusMeta.textContent = message;
+}
+
+function showTemporaryButtonState(button, text, duration = 1500) {
+  const originalText = button.textContent;
+
+  button.textContent = text;
+  button.disabled = true;
+
+  setTimeout(() => {
+    button.textContent = originalText;
+    button.disabled = false;
+  }, duration);
+}
+
 function setStatus({ title, mode, messageCount, filled }) {
   if (filled) {
     statusCard.classList.remove("status-empty");
@@ -43,56 +64,100 @@ captureBtn.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const mode = document.querySelector('input[name="mode"]:checked').value;
 
-  chrome.tabs.sendMessage(tab.id, { type: "CAPTURE_CONTEXT", mode }, async (response) => {
-    if (chrome.runtime.lastError) {
-      console.error(chrome.runtime.lastError.message);
-      return;
-    }
-    if (!response?.success) {
-      console.error("RelayContext failed to capture page:", response?.error);
-      setStatus({ filled: false });
-      disableActionButtons();
-      return;
-    }
+  chrome.tabs.sendMessage(
+    tab.id,
+    { type: "CAPTURE_CONTEXT", mode },
+    async (response) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError.message);
+        showError("Open a supported AI conversation and try again.");
+        disableActionButtons();
+        return;
+      }
+      if (!response?.success) {
+        console.error("RelayContext failed to capture page:", response?.error);
+        showError(response?.error || "No conversation could be captured.");
+        disableActionButtons();
+        return;
+      }
 
-    const context = response.data;
-    capturedText = context.text;
+      const context = response.data;
+      capturedText = context.text;
 
-    await chrome.storage.local.set({ capturedContext: context });
+      await chrome.storage.local.set({ capturedContext: context });
+      setStatus({
+        title: context.title,
+        mode,
+        messageCount:
+          context.messages?.length ?? context.processedMessages?.length,
+        filled: true,
+      });
 
-    setStatus({
-      title: context.title,
-      mode,
-      messageCount: context.messages?.length ?? context.processedMessages?.length,
-      filled: true,
-    });
-
-    enableActionButtons();
-  });
+      enableActionButtons();
+    },
+  );
 });
 
 copyBtn.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(capturedText);
-  copyBtn.textContent = "Copied!";
-  setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
+  if (!capturedText) return;
+  try {
+    await navigator.clipboard.writeText(capturedText);
+    showTemporaryButtonState(copyBtn,"Copied!",);
+  } catch (error) {
+    console.error("RelayContext clipboard copy failed:",error,);
+
+    showError("Could not copy the context to your clipboard.",);
+  }
 });
 
 exportBtn.addEventListener("click", async () => {
-  const { capturedContext } = await chrome.storage.local.get("capturedContext");
-  if (!capturedContext?.stateFile) return;
+  try {
+    const { capturedContext } =
+      await chrome.storage.local.get("capturedContext");
 
-  const blob = new Blob([capturedContext.stateFile], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `relaycontext-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+    if (!capturedContext?.stateFile) {
+      showError("No exported context is available.");
+      return;
+    }
+
+    const blob = new Blob(
+      [capturedContext.stateFile],
+      { type: "application/json" },
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = `relaycontext-${Date.now()}.json`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+
+    showTemporaryButtonState(
+      exportBtn,
+      "Exported!",
+    );
+  } catch (error) {
+    console.error(
+      "RelayContext export failed:",
+      error,
+    );
+
+    showError(
+      "Could not export the context file.",
+    );
+  }
 });
 
 targetBtns.forEach((btn) => {
   btn.addEventListener("click", async () => {
-    const { capturedContext } = await chrome.storage.local.get("capturedContext");
+    const { capturedContext } =
+      await chrome.storage.local.get("capturedContext");
     if (!capturedContext) return;
 
     const autoSend = document.getElementById("autoSendToggle").checked;
@@ -102,6 +167,8 @@ targetBtns.forEach((btn) => {
       pendingTarget: btn.dataset.platform,
       autoSend,
     });
+
+    btn.textContent = "Opening...";
 
     chrome.tabs.create({ url: btn.dataset.url });
   });

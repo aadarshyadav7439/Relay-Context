@@ -1,173 +1,223 @@
 // RelayContext Smart Context Engine
-// Full transcript,smart compaction, local AI summary, and context prompt generation
-function normalizeWhitespace(text) {
-  if (!text) {
-    return "";
+//works -> cleaning,validating compacting, summarize and generate
+(function () {
+  "use strict";
+
+  // 1. Text ko clean karna
+  function normalizeWhitespace(text) {
+    if (typeof(text) !== "string"){
+      return "";
+    }
+    return text
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
-  return text
-    .replace(/[ \t]+/g, " ")//multiple balnk spaces => Single space
-    .replace(/\n\s*\n+/g, "\n\n")//multiple blank lines => one blank line
-    .trim();//satart end ke white space
-}
-
-function cleanMessageText(text) {
-  return normalizeWhitespace(text);
-}
-
-// Raw scraped messages → clean standardized messages karega
-function formatMessages(messages) {
-  if (!Array.isArray(messages)) {
-    return [];
+  function cleanMessageText(text) {
+    return normalizeWhitespace(text);
   }
-
-  return messages
-    .map((message) => ({
-      role: message.role === "user" ? "user" : "assistant",
-      text: cleanMessageText(message.text),
-    }))
-    .filter((message) => message.text);//empty message hatne ke liye
-}
-
-//label add hoga for better conv0. understanding
-function formatFullContext(messages) {
-  const cleanedMessages = formatMessages(messages);
-
-  return cleanedMessages
-    .map((message) => {
-      const label = message.role === "user" ? "User" : "Assistant";
-
-      return `${label}: ${message.text}`;
-    })
-    .join("\n---\n");
-}
-
-function compactTranscript(messages) {
-  const cleanedMessages = formatMessages(messages);
-
-  if (cleanedMessages.length === 0) {
-    return [];
-  }
-
-  if (cleanedMessages.length <= 10) {
-    return cleanedMessages;
-  }
-
-  const result = [];
-
-  // Keep the first message because it usually establishes the goal.
-  result.push(cleanedMessages[0]);
-
-  // Extract important code blocks and technical decisions.
-  const codeBlocks = [];
-  const technicalDecisions = [];
-
-  const codeBlockRegex = /```[\s\S]*?```/g;
-
-  for (let i = 1; i < cleanedMessages.length - 1; i++) {
-    const message = cleanedMessages[i];
-
-    const matches = message.text.match(codeBlockRegex);
-
-    if (matches) {
-      matches.forEach((code) => {
-        if (!codeBlocks.includes(code)) {
-          codeBlocks.push(code);
+  // 2. Raw scraped messages → clean standardized messages karega
+  function formatMessages(messages) {
+    if (!Array.isArray(messages)) {
+      return [];
+    }
+    const seen = new Set();
+    return messages
+      .map((message) => {
+        if (!message || typeof message !== "object") {
+          return null;
         }
+        const role =
+          message.role === "user"
+            ? "user"
+            : message.role === "assistant"
+              ? "assistant"
+              : message.role === "system"? "system": null;
+        const text = cleanMessageText(message.text);
+
+        if (!role || !text) {
+          return null;
+        }
+        return {
+          role,text
+        };
+      })
+      .filter(Boolean)
+      .filter((message) => {
+        // Prevent exact duplicate messages caused by duplicated DOM nodes / fallback scraping.
+        const key = `${message.role}:${message.text}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+  }
+// 3. FULL TRANSCRIPT for the full mode
+  function formatFullContext(messages) {
+    const cleanedMessages = formatMessages(messages);
+
+    return cleanedMessages
+      .map((message) => {
+        const label =
+          message.role === "user"
+            ? "User"
+            : message.role === "assistant"? "Assistant": "System";
+        return `${label}: ${message.text}`;
+      })
+      .join("\n---\n");
+  }
+// 4. CODE EXTRACTION
+  function extractCodeBlocks(messages) {
+    const codeBlocks = [];
+    const seen = new Set();
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    messages.forEach((message) => {
+      const matches = message.text.match(codeBlockRegex);
+      if (!matches) {
+        return;
+      }
+      matches.forEach((code) => {
+        const cleanedCode = code.trim();
+        if (!cleanedCode || seen.has(cleanedCode)) {
+          return;
+        }
+        seen.add(cleanedCode);
+        codeBlocks.push(cleanedCode);
+      });
+    });
+    return codeBlocks;
+  }
+  // 5. TECHNICAL DECISION EXTRACTION
+  function extractTechnicalDecisions(messages) {
+    const decisions = [];
+    const seen = new Set();
+    const decisionRegex =/\b(decided|implemented|fixed|changed|refactored|optimized|rewrote|switched|moved|added|removed|updated|configured|replaced|selected|chose)\b/i;
+
+    messages.forEach((message) => {
+      if (!decisionRegex.test(message.text)) {
+        return;
+      }
+      const firstLine = message.text
+        .split("\n")
+        .map((line) => line.trim())
+        .find(Boolean);
+      if (!firstLine) {
+        return;
+      }
+      const decision = firstLine.substring(0, 300);
+      if (seen.has(decision)) {
+        return;
+      }
+      seen.add(decision);
+      decisions.push(decision);
+    });
+
+    return decisions;
+  }
+  
+  // 6. COMPACT TRANSCRIPT (JAb mode == compact hoga)
+
+  function compactTranscript(messages) {
+    const cleanedMessages = formatMessages(messages);
+    if (cleanedMessages.length === 0) {
+      return [];
+    }
+    // Short conversations me no need of compression.
+    if (cleanedMessages.length <= 10) {
+      return cleanedMessages;
+    }
+    const result = [];
+    // Preserve the initial goal/context.
+    result.push(cleanedMessages[0]);
+    const codeBlocks = extractCodeBlocks(cleanedMessages);
+    const technicalDecisions = extractTechnicalDecisions(cleanedMessages);
+    // Preserve important technical information.
+    if (codeBlocks.length > 0) {
+      result.push({
+        role: "system",
+        text:
+          "[Technical Context: Relevant code snippets]\n\n" +
+          codeBlocks.slice(0, 8).join("\n\n"),
       });
     }
 
-    if (
-      /decided|implemented|fixed|changed|refactored|optimized|rewrote|switched|moved|added|removed/i.test(
-        message.text,
-      )
-    ) {
-      const decision = message.text.split("\n")[0].substring(0, 200);
+    if (technicalDecisions.length > 0) {
+      result.push({
+        role: "system",
+        text:
+          "[Decision Log]\n" +
+          technicalDecisions
+            .slice(0, 8)
+            .map((decision) => `• ${decision}`)
+            .join("\n"),
+      });
+    }
 
-      if (decision && !technicalDecisions.includes(decision)) {
-        technicalDecisions.push(decision);
+    // Preserve the most recent messages because they represent the current state of the conversation.
+    const recentMessages = cleanedMessages.slice(-5);
+    recentMessages.forEach((message) => {
+      const alreadyIncluded = result.some(
+        (existing) =>
+          existing.role === message.role &&
+          existing.text === message.text,
+      );
+
+      if (!alreadyIncluded) {
+        result.push(message);
       }
-    }
-  }
-
-  // Add important code as technical context.
-  if (codeBlocks.length > 0) {
-    result.push({
-      role: "system",
-      text:
-        `[Technical Context: Active code snippets]\n\n` +
-        codeBlocks.slice(0, 5).join("\n\n"),
     });
+    return result;
   }
 
-  // Add technical decisions.
-  if (technicalDecisions.length > 0) {
-    result.push({
-      role: "system",
-      text:
-        `[Decision Log]\n` +
-        technicalDecisions
-          .slice(0, 5)
-          .map((decision) => `• ${decision}`)
-          .join("\n"),
-    });
-  }
+  // 7. COMPRESSION STATISTICS
 
-  // Keep the latest three messages for current conversation context.
-  const recentMessages = cleanedMessages.slice(-3);
-
-  recentMessages.forEach((message) => {
-    if (!result.includes(message)) {
-      result.push(message);
+  function calculateTextSize(messages) {
+    if (!Array.isArray(messages)) {
+      return 0;
     }
-  });
-
-  return result;
-}
-
-function getCompressionRatio(original, condensed) {
-  if (!Array.isArray(original) || !Array.isArray(condensed)) {
-    return "0.0";
+    return messages.reduce((total, message) => total + (message.text?.length || 0),0);
   }
 
-  const originalSize = original.reduce(
-    (sum, message) => sum + (message.text?.length || 0),
-    0,
-  );
-
-  const condensedSize = condensed.reduce(
-    (sum, message) => sum + (message.text?.length || 0),
-    0,
-  );
-
-  if (originalSize === 0) {
-    return "0.0";
-  }
-
-  return ((1 - condensedSize / originalSize) * 100).toFixed(1);
-}
-
-async function summarizeWithLocalAI(messages) {
-  try {
-    if (!window.ai || !window.ai.assistant) {
-      return null;
+  function getCompressionRatio(original, condensed) {
+    if (!Array.isArray(original) || !Array.isArray(condensed)) {
+      return "0.0";
     }
 
-    const transcript = formatMessages(messages);
-
-    if (transcript.length === 0) {
-      return null;
+    const originalSize = calculateTextSize(original);
+    const condensedSize = calculateTextSize(condensed);
+    if (originalSize === 0) {
+      return "0.0";
     }
 
-    const rawText = transcript
-      .map((message) => `${message.role}: ${message.text}`)
-      .join("\n\n");
+    const ratio = (1 - condensedSize / originalSize) * 100;
+    return Math.max(0, ratio).toFixed(1);
+  }
 
-    const session = await window.ai.assistant.create({
-      signal: AbortSignal.timeout(30000),
-    });
+// 8. LoCAL_ AI SUMMARIZATION
+  async function summarizeWithLocalAI(messages) {
+    try {
+      if (!window.ai || !window.ai.assistant) {
+        return null;
+      }
 
-    const systemPrompt = `
+      const transcript = formatMessages(messages);
+      if (transcript.length === 0) {
+        return null;
+      }
+
+      const rawText = transcript
+        .map((message) => `${message.role}: ${message.text}`)
+        .join("\n\n");
+
+      const session = await window.ai.assistant.create({
+        signal: AbortSignal.timeout(30000),
+      });
+
+      const systemPrompt = `
 You are a conversational AI context summarizer.
 
 Create a concise but complete structured state of the conversation.
@@ -190,136 +240,162 @@ Do not add information that is not present in the conversation.
 Return the result as structured Markdown.
 `;
 
-    const summary = await session.prompt(
-      systemPrompt + "\n\nCONVERSATION:\n" + rawText,
-    );
+      const summary = await session.prompt(
+        `${systemPrompt} 
+        CONVERSATION: 
+        ${rawText}`,
+      );
 
-    session.destroy();
-
-    return {
-      mode: "ai",
-      content: summary,
-      metadata: {
-        compressed: true,
-        localAI: true,
-        timestamp: new Date().toISOString(),
-      },
-    };
-  } catch (error) {
-    console.warn("RelayContext: Local AI summarization failed", error);
-
-    return null;
-  }
-}
-
-function shouldCompress(messages) {
-  return Array.isArray(messages) && messages.length > 10;
-}
-
-function createStateFile(messages, mode = "compact") {
-  const cleanedMessages = formatMessages(messages);
-
-  const transcript = mode === "compact" ? compactTranscript(cleanedMessages) : cleanedMessages;
-
-  const stateFile = {
-    version: "1.0",
-    format: "RelayContext State File",
-    exportedAt: new Date().toISOString(),
-    statistics: {
-      originalTurns: cleanedMessages.length,
-      condensedTurns: transcript.length,
-      compressionMode: mode,
-      compressionRatio: getCompressionRatio(cleanedMessages, transcript),
-    },
-    transcript,
-  };
-
-  return JSON.stringify(stateFile, null, 2);
-}
-
-function buildContextPrompt(messages, mode = "compact", preamble) {
-  const cleanedMessages = formatMessages(messages);
-
-  const systemPreamble =
-    preamble ||
-    `[System Instruction: You are continuing a conversation that began with another AI. The conversation context below contains the previous discussion, goals, decisions, and relevant information. Read it carefully and continue from the current state.]`;
-
-  let transcript = "";
-
-  if (mode === "compact") {
-    const compacted = compactTranscript(cleanedMessages);
-
-    compacted.forEach((message) => {
-      if (message.role === "system") {
-        transcript += `${message.text}\n\n`;
-      } else {
-        const label = message.role === "user" ? "User" : "Assistant";
-
-        transcript += `${label}: ${message.text}\n---\n`;
+      session.destroy();
+      if (!summary || typeof summary !== "string") {
+        return null;
       }
-    });
-  } else {
-    cleanedMessages.forEach((message) => {
-      const label = message.role === "user" ? "User" : "Assistant";
+      return {
+        mode: "ai",
+        content: summary.trim(),
+        metadata: {
+          compressed: true,
+          localAI: true,
+          timestamp: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      console.warn("RelayContext: Local AI summarization unavailable", error);
+      return null;
+    }
+  }
+  // 9. COMPRESSION DECISION
+  function shouldCompress(messages) {
+    return Array.isArray(messages) && messages.length > 10;
+  }
+//10. STATE FILE FOR EXPORT
+  function createStateFile(messages, mode = "compact") {
+    const cleanedMessages = formatMessages(messages);
 
-      transcript += `${label}: ${message.text}\n---\n`;
-    });
+    const transcript =
+      mode === "compact" ? compactTranscript(cleanedMessages) : cleanedMessages;
+
+    const stateFile = {
+      version: "1.0",
+      format: "RelayContext State File",
+      exportedAt: new Date().toISOString(),
+      statistics: {
+        originalTurns: cleanedMessages.length,
+        condensedTurns: transcript.length,
+        compressionMode: mode,
+        compressionRatio: getCompressionRatio(cleanedMessages, transcript),
+      },
+      transcript,
+    };
+
+    return JSON.stringify(stateFile, null, 2);
   }
 
-  return `${systemPreamble}
+  // 11. CONTEXT PROMPT (will be passed to other ai platforms)
+  function buildContextPrompt(messages, mode = "compact", preamble) {
+    const cleanedMessages = formatMessages(messages);
+    if (cleanedMessages.length === 0) {
+      return "";
+    }
+    const systemPreamble =
+      preamble ||
+      `[System Instruction: You are continuing a conversation that began with another AI. The conversation context below contains the previous discussion, goals, decisions, and relevant information. Read it carefully and continue from the current state.]`;
 
+    const transcriptMessages =
+      mode === "compact"? compactTranscript(cleanedMessages): cleanedMessages;
+    const transcript = transcriptMessages
+      .map((message) => {
+        if (message.role === "system") {
+          return message.text;
+        }
+        const label = message.role === "user" ? "User" : "Assistant";
+        return `${label}: ${message.text}`;
+      })
+      .join("\n---\n");
+
+    return `${systemPreamble}
 === CONVERSATION TRANSCRIPT START ===
 ${transcript.trim()}
 === CONVERSATION TRANSCRIPT END ===
 
 Continue the conversation based on the context above.`;
-}
-
-function processContext(context, mode = "compact") {
-  if (!context || !Array.isArray(context.messages)) {
-    return null;
   }
 
-  const messages = formatMessages(context.messages);
+  // 12. MAIN PROCESSING PIPELINE
 
-  if (messages.length === 0) {
-    return null;
+  function processContext(context, mode = "compact") {
+    if (!context || typeof context !== "object") {
+      return null;
+    }
+    if (!Array.isArray(context.messages)) {
+      return null;
+    }
+    const cleanedMessages = formatMessages(context.messages);
+    if (cleanedMessages.length === 0) {
+      return null;
+    }
+    const safeMode = mode === "full" ? "full" : "compact";
+    const processedMessages =
+      safeMode === "compact"? compactTranscript(cleanedMessages): cleanedMessages;
+    const text = buildContextPrompt(
+      cleanedMessages,
+      safeMode,
+    );
+    if (!text) {
+      return null;
+    }
+
+    const stateFile = createStateFile(
+      cleanedMessages,
+      safeMode,
+    );
+
+    return {
+      platform: context.platform || "unknown",
+      title: context.title || "Untitled Conversation",
+      url: context.url || window.location.href,
+      mode: safeMode,
+      messages: cleanedMessages,
+      processedMessages,
+      text,
+      stateFile,
+      statistics: {
+        originalTurns: cleanedMessages.length,
+        processedTurns: processedMessages.length,
+        compressionRatio: getCompressionRatio(
+          cleanedMessages,
+          processedMessages,
+        ),
+        originalCharacters: calculateTextSize(
+          cleanedMessages,
+        ),
+        processedCharacters: calculateTextSize(
+          processedMessages,
+        ),
+        compressed: shouldCompress(cleanedMessages),
+      },
+    };
   }
-
-  const condensed = mode === "compact" ? compactTranscript(messages) : messages;
-
-  return {
-    platform: context.platform,
-    title: context.title,
-    url: context.url,
-    mode,
-    messages,
-    processedMessages: condensed,
-    text: buildContextPrompt(messages, mode),
-    statistics: {
-      originalTurns: messages.length,
-      processedTurns: condensed.length,
-      compressionRatio: getCompressionRatio(messages, condensed),
-    },
+ // 13. PUBLIC API
+  window.RelayContextEngine = {
+    normalizeWhitespace,
+    cleanMessageText,
+    formatMessages,
+    formatFullContext,
+    extractCodeBlocks,
+    extractTechnicalDecisions,
+    compactTranscript,
+    getCompressionRatio,
+    summarizeWithLocalAI,
+    shouldCompress,
+    createStateFile,
+    buildContextPrompt,
+    processContext,
   };
-}
-
-window.RelayContextEngine = {
-  normalizeWhitespace,
-  cleanMessageText,
-  formatMessages,
-  formatFullContext,
-  compactTranscript,
-  getCompressionRatio,
-  summarizeWithLocalAI,
-  shouldCompress,
-  createStateFile,
-  buildContextPrompt,
-  processContext,
-};
-
-window.dispatchEvent(
-  new CustomEvent("relayContextEngine-ready", {
-    detail: window.RelayContextEngine,
-  }),
-);
+// Let other content scripts know that the engine is ready.
+  window.dispatchEvent(
+    new CustomEvent("relayContextEngine-ready", {
+      detail: window.RelayContextEngine,
+    }),
+  );
+})();

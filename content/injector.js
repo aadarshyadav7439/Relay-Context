@@ -39,23 +39,64 @@
 
   // Works for both React-controlled contenteditable divs and plain textareas.
   function insertText(el, text) {
+    if (!el || !text) return false;
     el.focus();
-
     const inserted =
       document.execCommand && document.execCommand("insertText", false, text);
 
-    if (!inserted) {
-      // Fallback for browsers/elements where execCommand doesn't work.
-      if ("value" in el) {
-        el.value = text;
-      } else {
-        el.textContent = text;
-      }
+    if (inserted) {
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
     }
+
+    if ("value" in el) {
+      el.value = text;
+    } else {
+      el.textContent = text;
+    }
+
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+
+    return true;
+  }
+  function getInputText(el) {
+    if (!el) return "";
+
+    if ("value" in el) {
+      return String(el.value || "");
+    }
+
+    return String(el.innerText || el.textContent || "");
   }
 
+  function normalizeForComparison(text) {
+    return String(text || "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function inputContainsText(el, expectedText) {
+    const actual = normalizeForComparison(getInputText(el));
+    const expected = normalizeForComparison(expectedText);
+
+    if (!actual || !expected) return false;
+
+    return actual.includes(expected);
+  }
+
+  async function verifyInjection(el, expectedText) {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      if (inputContainsText(el, expectedText)) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    return false;
+  }
   async function handleInjectionFailure(text, platform) {
     console.warn(
       `[RelayContext] Couldn't find the input box on ${platform}. Selectors may be outdated. Copying context to clipboard instead.`,
@@ -122,12 +163,53 @@
       return;
     }
 
-    insertText(inputBox, pendingContext);
+    const inserted = insertText(inputBox, pendingContext);
+
+    if (!inserted) {
+      await handleInjectionFailure(pendingContext, currentPlatform);
+
+      await chrome.storage.local.remove([
+        "pendingContext",
+        "pendingTarget",
+        "autoSend",
+      ]);
+
+      return;
+    }
+
+    const verified = await verifyInjection(inputBox, pendingContext);
+
+    if (!verified) {
+      console.warn(
+        `[RelayContext] Injection could not be verified on ${currentPlatform}.`,
+      );
+
+      await handleInjectionFailure(pendingContext, currentPlatform);
+
+      await chrome.storage.local.remove([
+        "pendingContext",
+        "pendingTarget",
+        "autoSend",
+      ]);
+
+      return;
+    }
+
+    console.log(
+      `[RelayContext] Context successfully injected into ${currentPlatform}.`,
+    );
 
     if (autoSend) {
       setTimeout(() => {
         const sendBtn = findSendButton(currentPlatform);
-        if (sendBtn && !sendBtn.disabled) sendBtn.click();
+
+        if (
+          sendBtn &&
+          !sendBtn.disabled &&
+          sendBtn.getAttribute("aria-disabled") !== "true"
+        ) {
+          sendBtn.click();
+        }
       }, SEND_DELAY);
     }
 

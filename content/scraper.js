@@ -110,9 +110,14 @@
         sendResponse({success: false,error: "No messages found to process."});
         return;
       }
-      //generating the export ready json
-      processed.stateFile = window.RelayContextEngine.createStateFile(context.messages,mode);
 
+      if (!processed.stateFile) {
+        processed.stateFile =
+          window.RelayContextEngine.createStateFile(
+            context.messages,
+            mode,
+          );
+      }
       sendResponse({success: true,data: processed});
     } catch (error) {
       console.error("RelayContext capture failed:", error);
