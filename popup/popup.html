@@ -7,53 +7,187 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header>
-    <h1>RelayContext</h1>
-    <p class="tagline">Your context, connected.</p>
-  </header>
+  <main id="mainScreen" class="screen">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-placeholder">R</div>
+        <div>
+          <h1>RelayContext</h1>
+          <p>Your context, connected.</p>
+        </div>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings" aria-label="Settings">
+        ⚙
+      </button>
+    </header>
+    <!-- Chat history -->
+    <section class="history-section">
+      <label for="historySelect">
+        Select chat history
+      </label>
+      <select id="historySelect">
+        <option value="current">
+          Current conversation
+        </option>
+      </select>
+    </section>
 
-  <div class="mode-selector">
-    <label class="mode-option">
-      <input type="radio" name="mode" value="compact" checked>
-      <span>Compact</span>
-    </label>
-    <label class="mode-option">
-      <input type="radio" name="mode" value="full">
-      <span>Full</span>
-    </label>
-  </div>
-
-  <button id="captureBtn" class="btn btn-primary">Capture Context</button>
-
-  <div id="statusCard" class="status-card status-empty">
-    <span id="statusIcon" class="status-icon">○</span>
-    <div class="status-text">
-      <p id="statusTitle">No context captured yet</p>
-      <p id="statusMeta"></p>
+    <!-- Context mode -->
+    <div class="mode-selector">
+      <label class="mode-option">
+        <input type="radio" name="mode" value="compact" checked>
+        <span>Compact</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="full">
+        <span>Full</span>
+      </label>
     </div>
-  </div>
 
-  <div class="action-row">
-    <button id="copyBtn" class="btn btn-secondary" disabled>Copy</button>
-    <button id="exportBtn" class="btn btn-secondary" disabled>Export</button>
-  </div>
 
-  <label class="toggle-row">
-    <input type="checkbox" id="autoSendToggle" checked>
-    <span>Auto-send after injecting</span>
-  </label>
+    <!-- Capture -->
 
-  <div class="target-section">
-    <h3>Send to</h3>
-    <div class="target-grid">
-      <button class="target-btn" data-platform="chatgpt" data-url="https://chatgpt.com" disabled>ChatGPT</button>
-      <button class="target-btn" data-platform="claude" data-url="https://claude.ai" disabled>Claude</button>
-      <button class="target-btn" data-platform="gemini" data-url="https://gemini.google.com" disabled>Gemini</button>
-      <button class="target-btn" data-platform="copilot" data-url="https://copilot.microsoft.com" disabled>Copilot</button>
-      <button class="target-btn" data-platform="grok" data-url="https://grok.com" disabled>Grok</button>
+    <button id="captureBtn" class="btn btn-primary">
+      Capture Context
+    </button>
+    <!-- Status -->
+
+    <div id="statusCard" class="status-card status-empty">
+      <span id="statusIcon" class="status-icon">
+        ○
+      </span>
+      <div class="status-text">
+        <p id="statusTitle">
+          No context captured yet
+        </p>
+        <p id="statusMeta"></p>
+
+      </div>
+
     </div>
-  </div>
+
+
+    <!-- Actions -->
+
+    <div class="action-row">
+      <button id="copyBtn" class="btn btn-secondary" disabled>
+        Copy
+      </button>
+      <button id="exportBtn" class="btn btn-secondary" disabled>
+        Export
+      </button>
+    </div>
+
+
+    <!-- Targets -->
+
+    <section class="target-section">
+      <h3>Send to</h3>
+      <div class="target-grid">
+        <button class="target-btn" data-platform="chatgpt" data-url="https://chatgpt.com" disabled>
+          ChatGPT
+        </button>
+        <button class="target-btn" data-platform="claude" data-url="https://claude.ai" disabled>
+          Claude
+        </button>
+        <button class="target-btn" data-platform="gemini" data-url="https://gemini.google.com" disabled>
+          Gemini
+        </button>
+        <button class="target-btn" data-platform="copilot" data-url="https://copilot.microsoft.com" disabled>
+          Copilot
+        </button>
+        <button class="target-btn" data-platform="grok" data-url="https://grok.com" disabled>
+          Grok
+        </button>
+      </div>
+    </section>
+
+    <footer>
+      Developed by <strong>Aadarsh Yadav</strong>
+    </footer>
+  </main>
+  <!-- Settings section -->
+
+  <main id="settingsScreen" class="screen hidden">
+    <header class="settings-header">
+      <button id="backBtn" class="icon-btn" aria-label="Back">
+        ←
+      </button>
+      <div>
+        <h1>Settings</h1>
+        <p>Configure RelayContext</p>
+      </div>
+    </header>
+    <!-- Continuation prompt -->
+    <section class="setting-group">
+
+      <label for="promptPreamble">
+        Continuation Prompt
+      </label>
+      <p class="setting-description">
+        Instructions added before transferred context.
+      </p>
+      <textarea id="promptPreamble" rows="5" placeholder="Enter your continuation prompt..."></textarea>
+    </section>
+
+
+    <!-- Default target -->
+
+    <section class="setting-group">
+      <label for="defaultTarget">
+        Default Target AI
+      </label>
+      <p class="setting-description">
+        AI selected automatically for transfers.
+      </p>
+      <select id="defaultTarget">
+        <option value="chatgpt">ChatGPT</option>
+        <option value="claude">Claude</option>
+        <option value="gemini">Gemini</option>
+        <option value="copilot">Copilot</option>
+        <option value="grok">Grok</option>
+      </select>
+
+    </section>
+    <label class="setting-toggle">
+      <div>
+        <strong>Auto-send</strong>
+        <span>
+          Send the transferred context automatically.
+        </span>
+      </div>
+      <input type="checkbox" id="autoSendSetting" checked>
+
+    </label>
+    <label class="setting-toggle">
+      <div>
+        <strong>Smart compression</strong>
+        <span>
+          Keep important context while reducing unnecessary history.
+        </span>
+      </div>
+      <input type="checkbox" id="smartCompressSetting" checked>
+
+    </label>
+
+    <div class="settings-actions">
+      <button id="saveSettingsBtn" class="btn btn-primary">
+        Save Settings
+      </button>
+      <button id="restoreDefaultsBtn" class="btn btn-secondary">
+        Restore Defaults
+      </button>
+    </div>
+    <div id="settingsMessage" class="settings-message"></div>
+    <footer>
+      Developed by <strong>Aadarsh Yadav</strong>
+    </footer>
+
+  </main>
+
 
   <script src="popup.js"></script>
+
 </body>
+
 </html>

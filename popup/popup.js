@@ -11,6 +11,35 @@ const targetBtns = document.querySelectorAll(".target-btn");
 // since the user only needs to see status, not the raw content.
 let capturedText = "";
 
+
+// Settings elements
+const settingsBtn = document.getElementById("settingsBtn");
+const backBtn = document.getElementById("backBtn");
+const mainScreen = document.getElementById("mainScreen");
+const settingsScreen = document.getElementById("settingsScreen");
+
+const promptPreamble = document.getElementById("promptPreamble");
+const defaultTarget = document.getElementById("defaultTarget");
+const autoSendSetting = document.getElementById("autoSendSetting");
+const smartCompressSetting = document.getElementById("smartCompressSetting");
+const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+const restoreDefaultsBtn = document.getElementById("restoreDefaultsBtn");
+const settingsMessage = document.getElementById("settingsMessage");
+const historySelect = document.getElementById("historySelect");
+
+
+const DEFAULT_SETTINGS = {
+  promptPreamble:
+    "[System Instruction: You are continuing a conversation that began with another AI. The conversation context below contains the previous discussion, goals, decisions, technical details, and relevant information. Read it carefully and continue from the current state.]",
+
+  defaultTarget: "chatgpt",
+
+  autoSend: true,
+
+  smartCompress: true,
+};
+
+
 function showError(message) {
   statusCard.classList.remove("status-filled");
   statusCard.classList.add("status-empty");
@@ -19,6 +48,7 @@ function showError(message) {
   statusTitle.textContent = "Something went wrong";
   statusMeta.textContent = message;
 }
+
 
 function showTemporaryButtonState(button, text, duration = 1500) {
   const originalText = button.textContent;
@@ -31,6 +61,7 @@ function showTemporaryButtonState(button, text, duration = 1500) {
     button.disabled = false;
   }, duration);
 }
+
 
 function setStatus({ title, mode, messageCount, filled }) {
   if (filled) {
@@ -48,17 +79,108 @@ function setStatus({ title, mode, messageCount, filled }) {
   }
 }
 
+
 function enableActionButtons() {
   copyBtn.disabled = false;
   exportBtn.disabled = false;
   targetBtns.forEach((btn) => (btn.disabled = false));
 }
 
+
 function disableActionButtons() {
   copyBtn.disabled = true;
   exportBtn.disabled = true;
   targetBtns.forEach((btn) => (btn.disabled = true));
 }
+
+
+// Opens the settings screen.
+settingsBtn?.addEventListener("click", async () => {
+  mainScreen?.classList.add("hidden");
+  settingsScreen?.classList.remove("hidden");
+
+  await loadSettings();
+});
+
+
+// Returns from settings to the main screen.
+backBtn?.addEventListener("click", () => {
+  settingsScreen?.classList.add("hidden");
+  mainScreen?.classList.remove("hidden");
+});
+
+
+// Loads saved settings from Chrome storage.
+async function loadSettings() {
+  if (!promptPreamble || !defaultTarget || !autoSendSetting || !smartCompressSetting) {
+    return;
+  }
+
+  const result = await chrome.storage.local.get("relaySettings");
+
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    ...(result.relaySettings || {}),
+  };
+
+  promptPreamble.value = settings.promptPreamble;
+  defaultTarget.value = settings.defaultTarget;
+  autoSendSetting.checked = settings.autoSend;
+  smartCompressSetting.checked = settings.smartCompress;
+}
+
+
+// Saves the current settings.
+saveSettingsBtn?.addEventListener("click", async () => {
+  const settings = {
+    promptPreamble:
+      promptPreamble?.value.trim() ||
+      DEFAULT_SETTINGS.promptPreamble,
+
+    defaultTarget:
+      defaultTarget?.value ||
+      DEFAULT_SETTINGS.defaultTarget,
+
+    autoSend:
+      autoSendSetting?.checked ??
+      DEFAULT_SETTINGS.autoSend,
+
+    smartCompress:
+      smartCompressSetting?.checked ??
+      DEFAULT_SETTINGS.smartCompress,
+  };
+
+  await chrome.storage.local.set({
+    relaySettings: settings,
+  });
+
+  if (settingsMessage) {
+    settingsMessage.textContent = "Settings saved.";
+
+    setTimeout(() => {
+      settingsMessage.textContent = "";
+    }, 1800);
+  }
+});
+
+
+// Restores the default settings.
+restoreDefaultsBtn?.addEventListener("click", async () => {
+  await chrome.storage.local.set({
+    relaySettings: DEFAULT_SETTINGS,
+  });
+
+  await loadSettings();
+
+  if (settingsMessage) {
+    settingsMessage.textContent = "Defaults restored.";
+
+    setTimeout(() => {
+      settingsMessage.textContent = "";
+    }, 1800);
+  }
+});
+
 
 captureBtn.addEventListener("click", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -74,6 +196,7 @@ captureBtn.addEventListener("click", async () => {
         disableActionButtons();
         return;
       }
+
       if (!response?.success) {
         console.error("RelayContext failed to capture page:", response?.error);
         showError(response?.error || "No conversation could be captured.");
@@ -85,6 +208,7 @@ captureBtn.addEventListener("click", async () => {
       capturedText = context.text;
 
       await chrome.storage.local.set({ capturedContext: context });
+
       setStatus({
         title: context.title,
         mode,
@@ -98,17 +222,21 @@ captureBtn.addEventListener("click", async () => {
   );
 });
 
+
 copyBtn.addEventListener("click", async () => {
   if (!capturedText) return;
+
   try {
     await navigator.clipboard.writeText(capturedText);
-    showTemporaryButtonState(copyBtn,"Copied!",);
-  } catch (error) {
-    console.error("RelayContext clipboard copy failed:",error,);
 
-    showError("Could not copy the context to your clipboard.",);
+    showTemporaryButtonState(copyBtn, "Copied!");
+  } catch (error) {
+    console.error("RelayContext clipboard copy failed:", error);
+
+    showError("Could not copy the context to your clipboard.");
   }
 });
+
 
 exportBtn.addEventListener("click", async () => {
   try {
@@ -154,13 +282,29 @@ exportBtn.addEventListener("click", async () => {
   }
 });
 
+
 targetBtns.forEach((btn) => {
   btn.addEventListener("click", async () => {
     const { capturedContext } =
       await chrome.storage.local.get("capturedContext");
+
     if (!capturedContext) return;
 
-    const autoSend = document.getElementById("autoSendToggle").checked;
+    const settingsResult =
+      await chrome.storage.local.get("relaySettings");
+
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      ...(settingsResult.relaySettings || {}),
+    };
+
+    const autoSendToggle =
+      document.getElementById("autoSendToggle");
+
+    const autoSend =
+      autoSendToggle?.checked ??
+      autoSendSetting?.checked ??
+      settings.autoSend;
 
     await chrome.storage.local.set({
       pendingContext: capturedContext.text,
@@ -174,10 +318,12 @@ targetBtns.forEach((btn) => {
   });
 });
 
+
 // Loads saved context, but only shows it if it actually belongs to the
 // current tab — otherwise you'd see stale status from a different page.
 async function loadSavedContext() {
   const result = await chrome.storage.local.get("capturedContext");
+
   if (!result.capturedContext) return;
 
   const context = result.capturedContext;
@@ -201,4 +347,75 @@ async function loadSavedContext() {
   enableActionButtons();
 }
 
-loadSavedContext();
+
+async function loadHistory() {
+  if (!historySelect) return;
+
+  historySelect.innerHTML = "";
+
+  const currentOption =
+    document.createElement("option");
+
+  currentOption.value = "current";
+  currentOption.textContent = "Current conversation";
+
+  historySelect.appendChild(currentOption);
+
+  const result =
+    await chrome.storage.local.get("capturedContext");
+
+  if (!result.capturedContext) {
+    return;
+  }
+
+  const context =
+    result.capturedContext;
+
+  const option =
+    document.createElement("option");
+
+  option.value = "captured";
+  option.textContent =
+    context.title || "Captured conversation";
+
+  historySelect.appendChild(option);
+}
+
+
+historySelect?.addEventListener("change", async () => {
+  if (historySelect.value !== "captured") {
+    return;
+  }
+
+  const result =
+    await chrome.storage.local.get("capturedContext");
+
+  if (!result.capturedContext) {
+    return;
+  }
+
+  const context =
+    result.capturedContext;
+
+  capturedText =
+    context.text;
+
+  setStatus({
+    title: context.title,
+    mode: context.mode,
+    messageCount:
+      context.messages?.length ??
+      context.processedMessages?.length,
+    filled: true,
+  });
+
+  enableActionButtons();
+});
+
+
+async function initialize() {
+  await loadSettings();
+  await loadHistory();
+  await loadSavedContext();
+}
+initialize();
