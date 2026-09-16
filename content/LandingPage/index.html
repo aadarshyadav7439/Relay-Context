@@ -5,7 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RelayContext — Never Lose Your AI Conversation</title>
   <link rel="icon" href="./relay.png">
-  <meta name="description" content="Switch between ChatGPT, Claude, Gemini, Copilot and Grok without losing context. One click to capture, one paste to continue." />
+  <meta name="description" content="Switch between ChatGPT, Claude, Gemini, Copilot and Grok without losing context. One click to capture — RelayContext auto-opens the next platform and continues for you." />
+  <meta name="theme-color" content="#08080e" />
+  <link rel="canonical" href="https://relay-context.vercel.app/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="RelayContext — Never Lose Your AI Conversation" />
+  <meta property="og:description" content="Switch between ChatGPT, Claude, Gemini, Copilot and Grok without losing context. One click to capture — RelayContext auto-opens the next platform and continues for you." />
+  <meta property="og:url" content="https://relay-context.vercel.app/" />
+  <meta property="og:image" content="./og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="RelayContext — Never Lose Your AI Conversation" />
+  <meta name="twitter:description" content="Switch between ChatGPT, Claude, Gemini, Copilot and Grok without losing context." />
+  <meta name="twitter:image" content="./og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
@@ -591,7 +602,7 @@
 
     @media (max-width: 768px) {
       nav { padding: 16px 20px; }
-      .nav-links { display: none; }
+      .nav-hide-mobile { display: none; }
       .steps { grid-template-columns: 1fr; }
       .step-arrow { display: none; }
       .demo-inner { grid-template-columns: 1fr; }
@@ -606,8 +617,8 @@
     <span>RelayContext</span>
   </a>
   <ul class="nav-links">
-    <li><a href="#how">How it works</a></li>
-    <li><a href="#features">Features</a></li>
+    <li class="nav-hide-mobile"><a href="#how">How it works</a></li>
+    <li class="nav-hide-mobile"><a href="#features">Features</a></li>
     <li><a href="#download" class="nav-cta">Download</a></li>
   </ul>
   <button class="theme-toggle" id="themeToggle" title="Toggle theme">
@@ -625,7 +636,7 @@
     <span class="gradient">Keep your context.</span>
   </h1>
   <p class="hero-sub">
-    Hit an AI's limit mid-conversation? RelayContext captures your full chat in one click and prepares a ready-made prompt to continue seamlessly on any other AI.
+    Hit an AI's limit mid-conversation? RelayContext captures your full chat in one click, opens your next AI in a new tab, and continues right where you left off — no manual copy-paste needed.
   </p>
   <div class="hero-actions">
     <a href="#download" class="btn-primary">↓ &nbsp;Download Extension</a>
@@ -668,8 +679,8 @@
       <div class="step">
         <p class="step-num">03</p>
         <div class="step-icon s3">✓</div>
-        <h3>Paste & continue</h3>
-        <p>Open any other AI, paste the prompt, and continue exactly where you left off. The new AI has full context.</p>
+        <h3>Auto-opens & continues</h3>
+        <p>Pick your next AI and RelayContext opens it in a new tab and drops the context in automatically. No manual pasting — the new AI has full context instantly.</p>
       </div>
     </div>
   </div>
@@ -696,10 +707,10 @@
           <div class="popup-badge-dot"></div>
           <div class="popup-badge-text">Detected: <span>ChatGPT</span></div>
         </div>
-        <button class="popup-btn">Capture &amp; Copy Context</button>
+        <button class="popup-btn">Capture &amp; Continue</button>
         <div class="popup-success">
           <div class="s-title">✓ CONTEXT CAPTURED</div>
-          <div class="s-body">Prompt copied to clipboard from ChatGPT.</div>
+          <div class="s-body">Choose where to continue — RelayContext opens a new tab and pastes it in automatically.</div>
           <div class="popup-count">24 messages captured</div>
           <div class="ai-links-row">
             <span class="ai-link-chip">Claude</span>
@@ -725,8 +736,8 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">📋</div>
-        <h3>One-click clipboard copy</h3>
-        <p>The full conversation gets packaged into a smart continuation prompt and copied to your clipboard instantly.</p>
+        <h3>Auto-opens the next platform</h3>
+        <p>Pick where you want to continue and RelayContext opens it in a new tab and pastes the context in for you — no manual copy-paste required.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">⇄</div>
@@ -784,8 +795,10 @@
   const icon = toggle.querySelector('.theme-icon');
   const root = document.documentElement;
 
-  // Load saved preference
-  if (localStorage.getItem('theme') === 'light') {
+  // Load saved preference, falling back to system preference on first visit
+  const savedTheme = localStorage.getItem('theme');
+  const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+  if (savedTheme === 'light' || (!savedTheme && prefersLight)) {
     root.classList.add('light');
     icon.textContent = '🌙';
   }

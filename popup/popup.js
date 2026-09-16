@@ -62,10 +62,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const showToast = (message) => {
     if (!toast) return;
-
     toast.textContent = message;
     toast.classList.add("show");
-
     setTimeout(() => {
       toast.classList.remove("show");
     }, 2500);
@@ -81,13 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
     detectedPanel?.classList.remove("hidden");
   };
 
-  // ============================================================
-  // SETTINGS
-  // ============================================================
-
   const loadSettings = async () => {
     const result = await chrome.storage.local.get("relaySettings");
-
     const settings = {
       ...DEFAULT_SETTINGS,
       ...(result.relaySettings || {}),
@@ -99,19 +92,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (preambleInput) {
       preambleInput.value = settings.promptPreamble;
     }
-
     if (defaultTargetSelect) {
       defaultTargetSelect.value = settings.defaultTarget;
     }
-
     if (autoSendToggle) {
       autoSendToggle.checked = settings.autoSend;
     }
-
     if (autoCompressToggle) {
       autoCompressToggle.checked = settings.smartCompress;
     }
-
     if (compressionModeSelect) {
       compressionModeSelect.value = settings.smartCompress ? "compact" : "full";
     }
@@ -121,12 +110,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const settings = {
       promptPreamble:
         preambleInput?.value.trim() || DEFAULT_SETTINGS.promptPreamble,
-
       defaultTarget:
         defaultTargetSelect?.value || DEFAULT_SETTINGS.defaultTarget,
-
       autoSend: autoSendToggle?.checked ?? DEFAULT_SETTINGS.autoSend,
-
       smartCompress:
         autoCompressToggle?.checked ?? DEFAULT_SETTINGS.smartCompress,
     };
@@ -165,13 +151,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     await loadSettings();
-
     showToast("Settings reset to defaults");
   });
-
-  // ============================================================
-  // AI STATUS
-  // ============================================================
 
   const updateAIStatus = (text, warning = false) => {
     if (!aiStatusText || !aiStatusBox) {
@@ -193,10 +174,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // ============================================================
-  // MODE SELECTION
-  // ============================================================
-
   segmentButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       segmentButtons.forEach((item) => {
@@ -204,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       btn.classList.add("active");
-
       activeMode = btn.dataset.mode || "compact";
 
       if (activeMode === "ai") {
@@ -218,17 +194,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ============================================================
-  // SELECTED MESSAGES
-  // ============================================================
-
   const getSelectedMessages = () => {
     if (!scrapedData?.messages?.length) {
       return [];
     }
 
     const checkboxes = document.querySelectorAll(".turn-checkbox");
-
     const selectedMessages = [];
 
     checkboxes.forEach((checkbox) => {
@@ -237,7 +208,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const index = Number.parseInt(checkbox.dataset.index, 10);
-
       const userMessage = scrapedData.messages[index];
 
       if (!userMessage) {
@@ -245,7 +215,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       selectedMessages.push(userMessage);
-
       const assistantMessage = scrapedData.messages[index + 1];
 
       if (assistantMessage?.role === "assistant") {
@@ -256,32 +225,23 @@ document.addEventListener("DOMContentLoaded", () => {
     return selectedMessages;
   };
 
-  // ============================================================
-  // COMPACTING
-  // ============================================================
-
   const getCompactMessages = (messages) => {
     if (!messages.length) {
       return [];
     }
-
     if (messages.length <= 10) {
       return messages;
     }
 
     const result = [messages[0]];
-
     const codeBlocks = [];
     const decisions = [];
-
     const codeRegex = /```[\s\S]*?```/g;
-
     const decisionRegex =
       /\b(decided|implemented|fixed|changed|refactored|optimized|rewrote|switched|moved|added|removed|updated|configured|replaced|selected|chose)\b/i;
 
     for (let i = 1; i < messages.length - 1; i++) {
       const message = messages[i];
-
       const matches = message.text.match(codeRegex);
 
       if (matches) {
@@ -338,17 +298,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return result;
   };
 
-  // ============================================================
-  // COUNTS
-  // ============================================================
-
   const updateCounts = () => {
     if (!scrapedData || !messageCountBadge || !charCountBadge) {
       return;
     }
 
     const selectedMessages = getSelectedMessages();
-
     const selectedTurns = document.querySelectorAll(
       ".turn-checkbox:checked",
     ).length;
@@ -364,7 +319,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     messageCountBadge.textContent = `${selectedTurns} turns selected`;
-
     charCountBadge.textContent = `~${chars.toLocaleString()} chars`;
 
     if (selectAllTurns) {
@@ -386,14 +340,9 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       selectAllTurns.checked = allChecked;
-
       selectAllTurns.indeterminate = someChecked && !allChecked;
     }
   };
-
-  // ============================================================
-  // TURN LIST
-  // ============================================================
 
   const renderTurnsList = () => {
     if (!turnsContainer || !scrapedData?.messages) {
@@ -401,7 +350,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     turnsContainer.innerHTML = "";
-
     let turnNumber = 1;
 
     scrapedData.messages.forEach((message, index) => {
@@ -410,35 +358,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const item = document.createElement("div");
-
       item.className = "turn-item";
       item.dataset.index = index;
       item.dataset.text = message.text.toLowerCase();
 
       const checkbox = document.createElement("input");
-
       checkbox.type = "checkbox";
       checkbox.checked = true;
       checkbox.className = "turn-checkbox";
       checkbox.dataset.index = index;
       checkbox.id = `turn-cb-${index}`;
-
       checkbox.addEventListener("change", updateCounts);
 
       const text = document.createElement("span");
-
       text.className = "turn-text";
-
       text.textContent = `${turnNumber}. ${message.text}`;
-
       text.addEventListener("click", () => {
         checkbox.checked = !checkbox.checked;
-
         updateCounts();
       });
 
       const meta = document.createElement("span");
-
       meta.className = "turn-meta";
 
       let totalLength = message.text.length;
@@ -452,9 +392,7 @@ document.addEventListener("DOMContentLoaded", () => {
       item.appendChild(checkbox);
       item.appendChild(text);
       item.appendChild(meta);
-
       turnsContainer.appendChild(item);
-
       turnNumber++;
     });
 
@@ -481,16 +419,11 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCounts();
   });
 
-  // ============================================================
-  // BUILD CONTINUATION PROMPT
-  // ============================================================
-
   const buildContinuationPrompt = async () => {
     const messages = getSelectedMessages();
 
     if (!messages.length) {
       alert("Please select at least one turn.");
-
       return "";
     }
 
@@ -504,7 +437,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeMode === "ai") {
       if (!window.ai?.assistant) {
         updateAIStatus("Local AI unavailable. Falling back to Compact.", true);
-
         processedMessages = getCompactMessages(messages);
       } else {
         try {
@@ -553,9 +485,7 @@ Continue the conversation based on this summary.`;
           }
         } catch (error) {
           console.warn("RelayContext: Local AI summarization failed", error);
-
           updateAIStatus("AI unavailable. Falling back to Compact.", true);
-
           processedMessages = getCompactMessages(messages);
         }
       }
@@ -566,7 +496,6 @@ Continue the conversation based on this summary.`;
         if (message.role === "system") {
           return message.text;
         }
-
         return `${
           message.role === "user" ? "User" : "Assistant"
         }: ${message.text}`;
@@ -582,10 +511,6 @@ ${transcript.trim()}
 Please review the transcript above and continue the conversation based on the current state.`;
   };
 
-  // ============================================================
-  // PREPARE BRIDGE
-  // ============================================================
-
   const prepareBridge = async (target) => {
     const promptText = await buildContinuationPrompt();
 
@@ -596,18 +521,12 @@ Please review the transcript above and continue the conversation based on the cu
     await chrome.storage.local.set({
       pendingContext: promptText,
       pendingTarget: target,
-
-      // IMPORTANT:
-      // RelayContext injector.js uses "autoSend"
+      // IMPORTANT: RelayContext injector.js uses "autoSend"
       autoSend: autoSendToggle?.checked ?? DEFAULT_SETTINGS.autoSend,
     });
 
     return true;
   };
-
-  // ============================================================
-  // COPY PROMPT
-  // ============================================================
 
   copyPromptBtn?.addEventListener("click", async () => {
     const promptText = await buildContinuationPrompt();
@@ -618,23 +537,16 @@ Please review the transcript above and continue the conversation based on the cu
 
     try {
       await navigator.clipboard.writeText(promptText);
-
       showToast("Continuation prompt copied!");
     } catch (error) {
       console.error("RelayContext clipboard copy failed:", error);
-
       showToast("Failed to copy.");
     }
   });
 
-  // ============================================================
-  // ONE CLICK RESUME
-  // ============================================================
-
   oneClickResumeBtn?.addEventListener("click", async () => {
     if (!defaultTarget || defaultTarget === "none") {
       alert("Set a default target in Settings first!");
-
       return;
     }
 
@@ -648,10 +560,6 @@ Please review the transcript above and continue the conversation based on the cu
       url: TARGET_URLS[defaultTarget],
     });
   });
-
-  // ============================================================
-  // TARGET BUTTONS
-  // ============================================================
 
   targetButtons.forEach((button) => {
     button.addEventListener("click", async () => {
@@ -681,14 +589,9 @@ Please review the transcript above and continue the conversation based on the cu
     });
   });
 
-  // ============================================================
-  // EXPORT STATE
-  // ============================================================
-
   exportStateBtn?.addEventListener("click", async () => {
     if (!scrapedData) {
       alert("No conversation to export!");
-
       return;
     }
 
@@ -696,7 +599,6 @@ Please review the transcript above and continue the conversation based on the cu
 
     if (!messages.length) {
       alert("Please select at least one turn.");
-
       return;
     }
 
@@ -704,25 +606,18 @@ Please review the transcript above and continue the conversation based on the cu
       version: "1.0",
       format: "RelayContext State File",
       exportedAt: new Date().toISOString(),
-
       platform: scrapedData.platform,
-
       title: scrapedData.title,
-
       url: scrapedData.url,
-
       statistics: {
         totalTurns: messages.filter((message) => message.role === "user")
           .length,
-
         totalMessages: messages.length,
-
         totalCharacters: messages.reduce(
           (sum, message) => sum + message.text.length,
           0,
         ),
       },
-
       transcript: messages,
     };
 
@@ -731,34 +626,22 @@ Please review the transcript above and continue the conversation based on the cu
     });
 
     const url = URL.createObjectURL(blob);
-
     const anchor = document.createElement("a");
-
     anchor.href = url;
-
     anchor.download = `relaycontext-${scrapedData.platform}-${Date.now()}.json`;
-
     document.body.appendChild(anchor);
-
     anchor.click();
-
     anchor.remove();
-
     URL.revokeObjectURL(url);
 
     showToast("Exported!");
   });
-
-  // ============================================================
-  // MANUAL CONTEXT
-  // ============================================================
 
   copyManualBtn?.addEventListener("click", async () => {
     const value = manualInput?.value.trim();
 
     if (!value) {
       alert("Paste some text first.");
-
       return;
     }
 
@@ -772,20 +655,13 @@ Please review this context and continue the conversation based on it.`;
 
     try {
       await navigator.clipboard.writeText(wrapped);
-
       showToast("Manual context copied!");
-
       manualInput.value = "";
     } catch (error) {
       console.error("RelayContext manual copy failed:", error);
-
       showToast("Failed to copy.");
     }
   });
-
-  // ============================================================
-  // ACCORDIONS
-  // ============================================================
 
   outlineTrigger?.addEventListener("click", () => {
     outlineTrigger.closest(".accordion")?.classList.toggle("expanded");
@@ -797,7 +673,6 @@ Please review this context and continue the conversation based on it.`;
     }
 
     const hidden = manualContent.classList.contains("hidden");
-
     manualContent.classList.toggle("hidden", !hidden);
 
     const arrow = manualTrigger.querySelector(".arrow");
@@ -806,10 +681,6 @@ Please review this context and continue the conversation based on it.`;
       arrow.textContent = hidden ? "▲" : "▼";
     }
   });
-
-  // ============================================================
-  // RENDER SCRAPED DATA
-  // ============================================================
 
   const renderScrapedUI = () => {
     if (!scrapedData) {
@@ -821,25 +692,18 @@ Please review this context and continue the conversation based on it.`;
     if (platformBadge) {
       platformBadge.className = `status-badge ${scrapedData.platform}`;
     }
-
     if (detectedPlatformText) {
       detectedPlatformText.textContent = `Active: ${scrapedData.platform}`;
     }
-
     if (chatTitle) {
       chatTitle.textContent = scrapedData.title || "Untitled Conversation";
     }
-
     if (limitWarning) {
       limitWarning.classList.toggle("hidden", !scrapedData.limitDetected);
     }
 
     renderTurnsList();
   };
-
-  // ============================================================
-  // INITIAL SCRAPE
-  // ============================================================
 
   const initScrape = async () => {
     try {
@@ -865,7 +729,6 @@ Please review this context and continue the conversation based on it.`;
               resolve(null);
               return;
             }
-
             resolve(result);
           },
         );
@@ -873,33 +736,23 @@ Please review this context and continue the conversation based on it.`;
 
       if (response?.success && response.data) {
         capturedContext = response.data;
-
         scrapedData = {
           platform: response.data.platform,
-
           title: response.data.title,
-
           url: response.data.url,
-
           messages: response.data.messages || [],
         };
 
         renderScrapedUI();
-
         return;
       }
 
       showEmptyUI();
     } catch (error) {
       console.error("RelayContext popup scrape failed:", error);
-
       showEmptyUI();
     }
   };
-
-  // ============================================================
-  // INITIALIZE
-  // ============================================================
 
   const initialize = async () => {
     await loadSettings();
