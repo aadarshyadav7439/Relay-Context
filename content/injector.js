@@ -21,9 +21,19 @@
 
   function findInputBox(platform) {
     const selectors = INPUT_SELECTORS[platform] || [];
-    for (const selector of selectors) {
-      const el = document.querySelector(selector);
-      if (el) return el;
+    for(const selector of selectors){
+      const elements = document.querySelectorAll(selector);
+
+      for(const el of elements){
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+
+        if(rect.width > 0 && rect.height > 0 &&
+          style.display !== "none" && style.visibility !== "hidden"
+        ){
+          return el;
+        }
+      }
     }
     return null;
   }

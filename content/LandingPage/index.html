@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayContext — Never Lose Your AI Conversation</title>
+  <meta name="description" content="Switch between ChatGPT, Claude, Gemini, Copilot and Grok without losing context. One click to capture, one paste to continue." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #08080e;
+      --surface: #111118;
+      --surface2: #17171f;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --accent: #c8c8d4;
+      --accent2: #888899;
+      --text: #e8e8f0;
+      --muted: #525260;
+      --muted2: #8888a0;
+    }
+
+    :root.light {
+      --bg: #f4f4f6;
+      --surface: #ffffff;
+      --surface2: #ebebef;
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.14);
+      --accent: #444458;
+      --accent2: #666678;
+      --text: #111118;
+      --muted: #888898;
+      --muted2: #555568;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,14,0.92);
+      backdrop-filter: blur(16px);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #444450, #2a2a36);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .nav-logo span {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      font-family: 'DM Mono', monospace;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, #38383e, #252530);
+      border-radius: 8px;
+      color: #fff !important;
+      font-family: 'Outfit', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+      transition: opacity 0.2s !important;
+    }
+
+    .nav-cta:hover { opacity: 0.88; color: #fff !important; }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 20%; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(180,180,200,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border: 1px solid rgba(180,180,200,0.2);
+      border-radius: 20px;
+      background: rgba(180,180,200,0.06);
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      color: #b0b0c8;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .hero-badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #aaaacc;
+      box-shadow: 0 0 6px #aaaacc;
+    }
+
+    h1 {
+      font-size: clamp(42px, 7vw, 80px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      max-width: 800px;
+    }
+
+    h1 .gradient {
+      background: linear-gradient(135deg, #ffffff 0%, #888899 60%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted2);
+      max-width: 520px;
+      margin-bottom: 44px;
+      font-weight: 400;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #38383e 0%, #252530 100%);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.2s, opacity 0.2s;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); opacity: 0.92; }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 24px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--muted2);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-secondary:hover { border-color: #b0b0c4; color: #b0b0c4; }
+
+    .ai-strip {
+      margin-top: 64px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ai-strip p {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .ai-logos {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .ai-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted2);
+    }
+
+    .ai-chip-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    section { position: relative; z-index: 1; }
+
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    .section-label {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #b0b0c4;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--muted2);
+      max-width: 480px;
+      line-height: 1.7;
+    }
+
+    .how { padding: 100px 0; border-top: 1px solid var(--border); }
+
+    .how-header { text-align: center; margin-bottom: 64px; }
+    .how-header .section-sub { margin: 0 auto; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .step { background: var(--surface); padding: 36px 32px; position: relative; }
+
+    .step-num {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+    }
+
+    .step-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    .step-icon.s1 { background: rgba(180,180,200,0.1); }
+    .step-icon.s2 { background: rgba(160,160,180,0.1); }
+    .step-icon.s3 { background: rgba(74,222,128,0.1); }
+
+    .step h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.01em; }
+    .step p { font-size: 14px; color: var(--muted2); line-height: 1.7; }
+
+    .step-arrow {
+      position: absolute;
+      right: -14px; top: 50%;
+      transform: translateY(-50%);
+      width: 28px; height: 28px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      color: var(--muted);
+      z-index: 2;
+    }
+
+    .features { padding: 100px 0; border-top: 1px solid var(--border); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 56px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      transition: border-color 0.25s;
+    }
+
+    .feature-card:hover { border-color: var(--border2); }
+    .feature-icon { font-size: 24px; margin-bottom: 16px; }
+    .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 13px; color: var(--muted2); line-height: 1.7; }
+
+    .demo { padding: 100px 0; border-top: 1px solid var(--border); }
+
+    .demo-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .demo-popup {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 340px;
+      margin: 0 auto;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .popup-logo {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg, #444450, #2a2a36);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .popup-title { font-size: 13px; font-weight: 700; }
+    .popup-sub { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+    .popup-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      background: rgba(74,222,128,0.06);
+      border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .popup-badge-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 6px #4ade80;
+      flex-shrink: 0;
+    }
+
+    .popup-badge-text { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted2); }
+    .popup-badge-text span { color: #4ade80; }
+
+    .popup-btn {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, #38383e, #252530);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+
+    .popup-success {
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.25);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted2);
+    }
+
+    .popup-success .s-title { color: #4ade80; font-weight: 500; margin-bottom: 4px; font-size: 11px; }
+    .popup-success .s-body { line-height: 1.6; }
+
+    .popup-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      background: rgba(180,180,200,0.1);
+      border: 1px solid rgba(180,180,200,0.2);
+      border-radius: 20px;
+      font-size: 10px;
+      color: #b0b0c4;
+      margin-top: 8px;
+    }
+
+    .ai-links-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+    .ai-link-chip {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+    }
+
+    .cta-section {
+      padding: 120px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      bottom: -100px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(180,180,200,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-section > * { position: relative; z-index: 1; }
+
+    .cta-section h2 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p { font-size: 16px; color: var(--muted2); margin-bottom: 36px; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+    }
+
+    /* ── Theme Toggle ── */
+    .theme-toggle {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      transform: rotate(15deg);
+    }
+
+    /* Light mode overrides */
+    :root.light nav {
+      background: rgba(244,244,246,0.92);
+    }
+
+    :root.light .hero::after {
+      background: radial-gradient(ellipse, rgba(100,100,130,0.06) 0%, transparent 70%);
+    }
+
+    :root.light h1 .gradient {
+      background: linear-gradient(135deg, #111118 0%, #666678 60%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    :root.light .hero-badge-dot {
+      background: #666688;
+      box-shadow: 0 0 6px #666688;
+    }
+
+    :root.light .nav-logo-icon,
+    :root.light .popup-logo,
+    :root.light .popup-btn,
+    :root.light .nav-cta {
+      background: linear-gradient(135deg, #2a2a36, #111118);
+    }
+
+    :root.light .btn-primary {
+      background: linear-gradient(135deg, #2a2a36 0%, #111118 100%);
+    }
+
+    :root.light body::before { opacity: 0.015; }
+
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .steps { grid-template-columns: 1fr; }
+      .step-arrow { display: none; }
+      .demo-inner { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">⇄</div>
+    <span>RelayContext</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#download" class="nav-cta">Download</a></li>
+  </ul>
+  <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+    <span class="theme-icon">☀️</span>
+  </button>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    Free Chrome Extension · v1.0
+  </div>
+  <h1>
+    Switch AIs.<br />
+    <span class="gradient">Keep your context.</span>
+  </h1>
+  <p class="hero-sub">
+    Hit an AI's limit mid-conversation? RelayContext captures your full chat in one click and prepares a ready-made prompt to continue seamlessly on any other AI.
+  </p>
+  <div class="hero-actions">
+    <a href="#download" class="btn-primary">↓ &nbsp;Download Extension</a>
+    <a href="#how" class="btn-secondary">See how it works →</a>
+  </div>
+  <div class="ai-strip">
+    <p>Works with</p>
+    <div class="ai-logos">
+      <div class="ai-chip"><span class="ai-chip-dot" style="background:#10a37f"></span>ChatGPT</div>
+      <div class="ai-chip"><span class="ai-chip-dot" style="background:#cc785c"></span>Claude</div>
+      <div class="ai-chip"><span class="ai-chip-dot" style="background:#4285f4"></span>Gemini</div>
+      <div class="ai-chip"><span class="ai-chip-dot" style="background:#0078d4"></span>Copilot</div>
+      <div class="ai-chip"><span class="ai-chip-dot" style="background:#1d9bf0"></span>Grok</div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="container">
+    <div class="how-header">
+      <p class="section-label">How it works</p>
+      <h2 class="section-title">Three steps. Zero friction.</h2>
+      <p class="section-sub">No accounts, no servers, no data leaving your browser. It's all local.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <p class="step-num">01</p>
+        <div class="step-icon s1">💬</div>
+        <h3>Hit the limit</h3>
+        <p>You're deep in a conversation on any AI. The limit hits and you need to switch.</p>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step">
+        <p class="step-num">02</p>
+        <div class="step-icon s2">⇄</div>
+        <h3>Click & capture</h3>
+        <p>Open RelayContext. One click captures the full conversation and copies a continuation prompt to your clipboard.</p>
+        <div class="step-arrow">→</div>
+      </div>
+      <div class="step">
+        <p class="step-num">03</p>
+        <div class="step-icon s3">✓</div>
+        <h3>Paste & continue</h3>
+        <p>Open any other AI, paste the prompt, and continue exactly where you left off. The new AI has full context.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="demo" id="demo">
+  <div class="container">
+    <div class="demo-inner">
+      <div>
+        <p class="section-label">Live preview</p>
+        <h2 class="section-title">Clean. Fast.<br/>No friction.</h2>
+        <p class="section-sub" style="margin-bottom: 32px;">The extension popup sits right in your browser toolbar. Detect, capture, copy — done in under 3 seconds.</p>
+        <a href="#download" class="btn-primary" style="width: fit-content;">Get it free →</a>
+      </div>
+      <div class="demo-popup">
+        <div class="popup-header">
+          <div class="popup-logo">⇄</div>
+          <div>
+            <div class="popup-title">RelayContext</div>
+            <div class="popup-sub">Never lose your conversation</div>
+          </div>
+        </div>
+        <div class="popup-badge">
+          <div class="popup-badge-dot"></div>
+          <div class="popup-badge-text">Detected: <span>ChatGPT</span></div>
+        </div>
+        <button class="popup-btn">Capture &amp; Copy Context</button>
+        <div class="popup-success">
+          <div class="s-title">✓ CONTEXT CAPTURED</div>
+          <div class="s-body">Prompt copied to clipboard from ChatGPT.</div>
+          <div class="popup-count">24 messages captured</div>
+          <div class="ai-links-row">
+            <span class="ai-link-chip">Claude</span>
+            <span class="ai-link-chip">Gemini</span>
+            <span class="ai-link-chip">Copilot</span>
+            <span class="ai-link-chip">Grok</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <p class="section-label">Features</p>
+    <h2 class="section-title">Everything you need.<br/>Nothing you don't.</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Auto platform detection</h3>
+        <p>Opens on ChatGPT? Claude? Gemini? RelayContext detects the platform automatically and scrapes the right way.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📋</div>
+        <h3>One-click clipboard copy</h3>
+        <p>The full conversation gets packaged into a smart continuation prompt and copied to your clipboard instantly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⇄</div>
+        <h3>Works across all major AIs</h3>
+        <p>ChatGPT, Claude, Gemini, Microsoft Copilot, and Grok — switch in any direction, any time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>100% local & private</h3>
+        <p>No servers, no accounts, no data collection. Everything runs in your browser. Your conversations stay yours.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Instant — under 3 seconds</h3>
+        <p>From hitting the limit to being ready to paste in a new AI — the whole process takes less than 3 seconds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Smart prompt format</h3>
+        <p>The generated prompt includes full conversation history with clear user/assistant labels so the new AI has complete context.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section" id="download">
+  <div class="container">
+    <p class="section-label">Get started</p>
+    <h2>Download RelayContext</h2>
+    <p>Free. No account needed. Works in Chrome and any Chromium browser.</p>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <a href="" download class="btn-primary" style="font-size: 16px; padding: 16px 36px;">
+        ↓ &nbsp;Download v1.0.0 (.zip)
+      </a>
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 28px; max-width: 480px; text-align: left; margin-top: 8px;">
+        <p style="font-size: 12px; font-family: 'DM Mono', monospace; color: var(--muted); margin-bottom: 12px; letter-spacing: 0.06em; text-transform: uppercase;">Install steps</p>
+        <ol style="font-size: 13px; color: var(--muted2); line-height: 2; padding-left: 18px; font-family: 'DM Mono', monospace;">
+          <li>Download and unzip the file</li>
+          <li>Open Chrome → <code style="color: #b0b0c4;">chrome://extensions</code></li>
+          <li>Enable <strong style="color: var(--text);">Developer mode</strong> (top right)</li>
+          <li>Click <strong style="color: var(--text);">Load unpacked</strong> → select the folder</li>
+          <li>Pin the extension and you're done ✓</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>© 2026 RelayContext — Built by Aadarsh Yadav</span>
+</footer>
+
+<script>
+  const toggle = document.getElementById('themeToggle');
+  const icon = toggle.querySelector('.theme-icon');
+  const root = document.documentElement;
+
+  // Load saved preference
+  if (localStorage.getItem('theme') === 'light') {
+    root.classList.add('light');
+    icon.textContent = '🌙';
+  }
+
+  toggle.addEventListener('click', () => {
+    const isLight = root.classList.toggle('light');
+    icon.textContent = isLight ? '🌙' : '☀️';
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  });
+</script>
+</body>
+</html>
